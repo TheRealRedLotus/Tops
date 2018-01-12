@@ -468,6 +468,14 @@ def make_hist(name, title, bins, xlabel="", ylabel=""):
     h.SetTitle(title)
     return h
 
+    #Function to Create Response Matrices
+def make_rmatrix(name, title, xbins, ybins, xlabel="", ylabel=""):
+    r = TH2F(name, title, len(xbins)-1, array('d',xbins), len(ybins)-1, array('d', ybins))
+    r.GetXaxis().SetTitle(xlabel)
+    r.GetYaxis().SetTitle(ylabel)
+    r.SetTitle(title)
+    return r
+
 def runAnalysis(inFileDir, inFileName, file_index, outFileURL, mc_file_list, pileupFile, xsec=None, n_mc_events=None):
     """
     Perform the analysis on a single file
@@ -480,7 +488,6 @@ def runAnalysis(inFileDir, inFileName, file_index, outFileURL, mc_file_list, pil
 
     pt_ll_rec_16bins = [10.0, 23.17131943141237, 32.18569885764156, 39.60462286891421, 46.12340920161678, 51.97834804268123, 57.43814633771619, 62.85237542300829, 68.35340061285042, 73.95557401849604, 79.86801168006713, 86.36792023906511, 93.76572289546236, 102.40245430880857, 113.62115557216005, 130.87054030878411, 178.2]
     pt_ll_rec_32bins = [10.0, 18.369791717417908, 24.564946693077683, 29.77215442463719, 34.41719725093281, 38.61626637421721, 42.46354734016703, 46.12340920161678, 49.54251124325757, 52.760235895277674, 55.88778730566342, 58.98197015482969, 62.06961778905669, 65.2072610646701, 68.35340061285042, 71.55016404807125, 74.79716176886909, 78.16351277036131, 81.69667865226529, 85.35401259666159, 89.42546343763628, 93.76572289546236, 98.49945923653077, 103.8419431189069, 110.07121617666915, 117.72458176758295, 127.75861912991853, 142.9933087379969, 178.2] 
-
 
     #jet_mult_bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     jet_mult_bins = [-0.5 + n for n in range(16)]
@@ -584,6 +591,14 @@ def runAnalysis(inFileDir, inFileName, file_index, outFileURL, mc_file_list, pil
     histos["M_ll_gen"] = make_hist("M_ll_gen", "M(l^{+}l^{-}) gen", invariant_mass_bins, "M(l^{+}l^{-}) [GeV]", "Events/bin")
     histos["Ep_Em_gen"] = make_hist("Ep_Em_gen", "E(l^{+}) + E(l^{-}) gen", e_sum_bins,"E(l^{+}) + E(l^{-}) [GeV]", "Events/bin")
     histos["ptp_ptm_gen"] = make_hist("ptp_ptm_gen", "p_{T}(l^{+}) + p_{T}(l^{-}) gen", pt_sum_bins, "p_{T}(l^{+}) + p_{T}(l^{-}) [GeV]", "Events/bin")
+
+    #Response Matrix
+    histos["r_pt_ll"] = make_rmatrix("r_pt_ll", "Response p_{T}(l^{+}l^{-})", pt_ll_rec_16bins, pt_ll_rec_32bins, "p_{T}(l^{+}l^{-}) gen [GeV]", "p_{T}(l^{+}l^{-}) reco [GeV]")
+    histos["r_pt_ll_1"] = make_rmatrix("r_pt_ll_1", "Response p_{T}(l^{+}l^{-}) with Weight=1", pt_ll_rec_16bins, pt_ll_rec_32bins, "p_{T}(l^{+}l^{-}) gen [GeV]", "p_{T}(l^{+}l^{-}) reco [GeV]")
+    histos["w_r_pt_ll_0"] = make_hist("w_r_pt_ll_0","Response p_{T}(l^{+}l^{-}) Weights on 1x10:1x10", pileup_weight_bins, "Weight", "Events/Bin")
+    histos["w_r_pt_ll_1"] = make_hist("w_r_pt_ll_1","Response p_{T}(l^{+}l^{-}) Weights off 46x51:1x10",pileup_weight_bins , "Weight", "Events/Bin")
+    histos["w_r_pt_ll_2"] = make_hist("w_r_pt_ll_2","Response p_{T}(l^{+}l^{-}) Weights on 130x180:145x180", pileup_weight_bins, "Weight", "Events/Bin")
+    histos["w_r_pt_ll_3"] = make_hist("w_r_pt_ll_3","Response p_{T}(l^{+}l^{-}) Weights off 46x51:10x20",pileup_weight_bins , "Weight", "Events/Bin")
 
 
 
@@ -1121,9 +1136,18 @@ def runAnalysis(inFileDir, inFileName, file_index, outFileURL, mc_file_list, pil
 				histos["E_pos_gen"].Fill(gen_lp.E(), weight)
 				histos["M_ll_gen"].Fill(gen_ll.M(), weight)
 				histos["Ep_Em_gen"].Fill(gen_lp.E() + lm.E(), weight)
-				histos["ptp_ptm_gen"].Fill(gen_lp.Pt() + lm.Pt(), weight)
+				histos["ptp_ptm_gen"].Fill(gen_lp.Pt() + lm.Pt(), weight)	
+				histos["r_pt_ll"].Fill(gen_ll.Pt(), ll.Pt(), weight)
+				histos["r_pt_ll_1"].Fill(gen_ll.Pt(), ll.Pt())
 
-
+				if (0<=gen_ll.Pt()<=10) and (0<=ll.Pt()<=10):
+				    histos["w_r_pt_ll_0"].Fill(weight, 1)
+				if (46<=gen_ll.Pt()<=51) and (0<=ll.Pt()<=10):
+				    histos["w_r_pt_ll_1"].Fill(weight, 1)
+				if (130<=gen_ll.Pt()<=180) and (145<=ll.Pt()<=180):
+				    histos["w_r_pt_ll_2"].Fill(weight, 1)
+				if (46<=gen_ll.Pt()<=51) and (10<=ll.Pt()<=20):
+				    histos["w_r_pt_ll_3"].Fill(weight, 1)
 
     # end of main for loop 
     if log_scale_factors and not isData:
